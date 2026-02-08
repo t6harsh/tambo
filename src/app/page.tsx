@@ -20,7 +20,7 @@ export default function Home() {
     setValue(text);
   };
 
-  const messages = thread?.messages || [];
+  const messages = (thread?.messages || []).filter(m => m.role !== "system");
 
   return (
     <main className="h-screen flex bg-zinc-950 text-zinc-100 overflow-hidden font-sans bg-mesh selection:bg-blue-500/30">
