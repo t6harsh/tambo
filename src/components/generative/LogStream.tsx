@@ -1,59 +1,29 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Terminal, AlertTriangle, Info, Bug } from "lucide-react";
+import { Terminal, Copy, Check, ChevronRight } from "lucide-react";
 
 interface LogStreamProps {
   serviceName: string;
-  logLines: string[];
+  logLines?: string[]; // Made optional for safety
   highlightError: boolean;
 }
 
 type LogLevel = "ERROR" | "WARN" | "INFO" | "DEBUG";
 
 function parseLogLevel(line: string): LogLevel {
-  if (line.includes("ERROR") || line.includes("error") || line.includes("failed") || line.includes("exception")) {
-    return "ERROR";
-  }
-  if (line.includes("WARN") || line.includes("warning")) {
-    return "WARN";
-  }
-  if (line.includes("DEBUG")) {
-    return "DEBUG";
-  }
+  if (line.includes("ERROR") || line.includes("error") || line.includes("failed") || line.includes("exception")) return "ERROR";
+  if (line.includes("WARN") || line.includes("warning")) return "WARN";
+  if (line.includes("DEBUG")) return "DEBUG";
   return "INFO";
 }
 
-function getLogIcon(level: LogLevel) {
-  switch (level) {
-    case "ERROR":
-      return <AlertTriangle className="w-3 h-3 text-red-400" />;
-    case "WARN":
-      return <AlertTriangle className="w-3 h-3 text-amber-400" />;
-    case "DEBUG":
-      return <Bug className="w-3 h-3 text-purple-400" />;
-    default:
-      return <Info className="w-3 h-3 text-blue-400" />;
-  }
-}
-
-function getLogColor(level: LogLevel): string {
-  switch (level) {
-    case "ERROR":
-      return "text-red-400 bg-red-500/10 border-l-2 border-red-500";
-    case "WARN":
-      return "text-amber-400 bg-amber-500/10 border-l-2 border-amber-500";
-    case "DEBUG":
-      return "text-purple-400";
-    default:
-      return "text-gray-300";
-  }
-}
-
-export function LogStream({ serviceName, logLines, highlightError }: LogStreamProps) {
+export function LogStream({ serviceName, logLines = [], highlightError }: LogStreamProps) {
+  const safeLogLines = useMemo(() => Array.isArray(logLines) ? logLines : [], [logLines]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (highlightError && errorRef.current) {
@@ -61,79 +31,100 @@ export function LogStream({ serviceName, logLines, highlightError }: LogStreamPr
     } else if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logLines, highlightError]);
+  }, [safeLogLines, highlightError]);
 
-  const errorCount = logLines.filter(line => parseLogLevel(line) === "ERROR").length;
-  const warnCount = logLines.filter(line => parseLogLevel(line) === "WARN").length;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(safeLogLines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl overflow-hidden glass border border-[var(--border-color)]"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass-card rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-[#0d0d0d]"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[var(--card-bg)] border-b border-[var(--border-color)]">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-            <Terminal className="w-4 h-4 text-white" />
+      {/* Mac-style Window Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5 backdrop-blur-xl">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5 mr-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] shadow-sm" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] shadow-sm" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-sm" />
           </div>
-          <div>
-            <h3 className="font-semibold">{serviceName}</h3>
-            <p className="text-xs text-gray-400">Log Stream</p>
+          <div className="flex items-center gap-2 px-2 py-0.5 rounded-md bg-black/20 border border-white/5 text-[10px] font-mono text-zinc-400">
+            <Terminal className="w-3 h-3" />
+            <span>{serviceName}.log</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          {errorCount > 0 && (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs">
-              <AlertTriangle className="w-3 h-3" />
-              {errorCount} errors
-            </span>
-          )}
-          {warnCount > 0 && (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs">
-              {warnCount} warnings
-            </span>
-          )}
-          <span className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            Live
-          </span>
-        </div>
+        <button 
+          onClick={handleCopy}
+          className="p-1.5 rounded-md hover:bg-white/10 text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
-      {/* Log Content */}
+      {/* Editor Content */}
       <div 
         ref={scrollRef}
-        className="h-64 overflow-y-auto bg-[#0d0d12] font-mono text-sm"
+        className="h-[350px] overflow-y-auto p-4 font-mono text-[13px] leading-6 bg-[#09090b] scrollbar-hide"
       >
-        {logLines.map((line, index) => {
-          const level = parseLogLevel(line);
-          const isError = level === "ERROR";
-          
-          return (
-            <motion.div
-              key={index}
-              ref={isError && highlightError ? errorRef : null}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.02 }}
-              className={`flex items-start gap-2 px-4 py-1.5 hover:bg-white/5 ${getLogColor(level)}`}
-            >
-              <span className="text-gray-600 select-none w-8 text-right shrink-0">
-                {(index + 1).toString().padStart(3, "0")}
-              </span>
-              <span className="shrink-0 mt-0.5">{getLogIcon(level)}</span>
-              <span className="break-all">{line}</span>
-            </motion.div>
-          );
-        })}
-      </div>
+        <div className="space-y-0.5">
+          {safeLogLines.length === 0 ? (
+             <p className="text-zinc-600 italic">No logs available.</p>
+          ) : (
+            safeLogLines.map((line, index) => {
+              const level = parseLogLevel(line);
+              const isError = level === "ERROR";
+              const isWarn = level === "WARN";
 
-      {/* Footer */}
-      <div className="px-4 py-2 bg-[var(--card-bg)] border-t border-[var(--border-color)] flex items-center justify-between text-xs text-gray-400">
-        <span>{logLines.length} lines</span>
-        <span>Auto-scroll: {highlightError ? "Jump to errors" : "Latest"}</span>
+              return (
+                <motion.div
+                  key={index}
+                  ref={isError && highlightError ? errorRef : null}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.02 }}
+                  className={`group flex items-start -mx-4 px-4 py-0.5 hover:bg-white/5 transition-colors ${
+                    isError ? "bg-red-500/5" : ""
+                  }`}
+                >
+                  {/* Line Number */}
+                  <span className="text-zinc-700 w-8 text-right select-none pr-3 text-[11px] pt-0.5 opacity-50 font-medium">
+                    {index + 1}
+                  </span>
+
+                  {/* Content */}
+                  <div className="flex-1 flex gap-3 break-all">
+                    <span className={`shrink-0 font-bold text-[10px] px-1.5 rounded h-5 flex items-center mt-0.5 ${
+                      isError ? "bg-red-500/20 text-red-400" :
+                      isWarn ? "bg-amber-500/20 text-amber-400" :
+                      level === "DEBUG" ? "bg-purple-500/20 text-purple-400" :
+                      "bg-blue-500/20 text-blue-400"
+                    }`}>
+                      {level}
+                    </span>
+                    <span className={`font-medium ${
+                      isError ? "text-red-300" :
+                      isWarn ? "text-amber-200" :
+                      "text-zinc-400 group-hover:text-zinc-300"
+                    }`}>
+                      {line.replace(/\[.*?\]/, "").trim()} 
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+          
+          {/* Animated cursor at the end */}
+          <div className="flex items-center gap-2 pl-8 pt-2">
+            <ChevronRight className="w-3 h-3 text-blue-500" />
+            <span className="w-2 h-4 bg-blue-500 animate-pulse" />
+          </div>
+        </div>
       </div>
     </motion.div>
   );

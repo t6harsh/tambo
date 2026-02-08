@@ -8,23 +8,24 @@ import {
   Scale, 
   Power, 
   AlertTriangle,
-  CheckCircle,
+  CheckCircle2,
   Loader2,
-  Shield
+  ShieldAlert,
+  ArrowRight
 } from "lucide-react";
 
 interface ControlDeckProps {
   serviceId: string;
-  actions: string[];
+  actions?: string[]; // Made optional for safety
 }
 
 type ActionState = "idle" | "loading" | "success" | "error";
 
 interface ActionConfig {
   icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-  description: string;
+  gradient: string;
+  text: string;
+  desc: string;
 }
 
 function getActionConfig(action: string): ActionConfig {
@@ -32,169 +33,154 @@ function getActionConfig(action: string): ActionConfig {
   
   if (lowerAction.includes("restart")) {
     return {
-      icon: <RefreshCw className="w-4 h-4" />,
-      color: "text-amber-400",
-      bgColor: "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/30",
-      description: "~30s downtime expected"
+      icon: <RefreshCw className="w-5 h-5" />,
+      gradient: "from-amber-500 to-orange-500",
+      text: "text-amber-500",
+      desc: "Graceful restart (30s)"
     };
   }
   if (lowerAction.includes("rollback")) {
     return {
-      icon: <RotateCcw className="w-4 h-4" />,
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/30",
-      description: "Revert to previous version"
+      icon: <RotateCcw className="w-5 h-5" />,
+      gradient: "from-blue-500 to-indigo-500",
+      text: "text-blue-500",
+      desc: "Revert to v1.0.2"
     };
   }
   if (lowerAction.includes("scale")) {
     return {
-      icon: <Scale className="w-4 h-4" />,
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/20 hover:bg-purple-500/30 border-purple-500/30",
-      description: "Add more replicas"
-    };
-  }
-  if (lowerAction.includes("stop") || lowerAction.includes("kill")) {
-    return {
-      icon: <Power className="w-4 h-4" />,
-      color: "text-red-400",
-      bgColor: "bg-red-500/20 hover:bg-red-500/30 border-red-500/30",
-      description: "Complete service shutdown"
+      icon: <Scale className="w-5 h-5" />,
+      gradient: "from-purple-500 to-pink-500",
+      text: "text-purple-500",
+      desc: "Add 2 replicas"
     };
   }
   
   return {
-    icon: <Shield className="w-4 h-4" />,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/30",
-    description: "Execute action"
+    icon: <Power className="w-5 h-5" />,
+    gradient: "from-red-500 to-rose-600",
+    text: "text-red-500",
+    desc: "Emergency Stop"
   };
 }
 
-export function ControlDeck({ serviceId, actions }: ControlDeckProps) {
+export function ControlDeck({ serviceId, actions = [] }: ControlDeckProps) {
+  const safeActions = Array.isArray(actions) ? actions : [];
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const handleAction = async (action: string) => {
     setActionStates(prev => ({ ...prev, [action]: "loading" }));
-    
-    // Simulate action execution
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
     setActionStates(prev => ({ ...prev, [action]: "success" }));
-    setToast({ 
-      message: `${action} executed successfully on ${serviceId}`, 
-      type: "success" 
-    });
+    setToast({ message: "Operation Executed Successfully", type: "success" });
     
-    // Reset after delay
     setTimeout(() => {
       setActionStates(prev => ({ ...prev, [action]: "idle" }));
     }, 3000);
-    
-    setTimeout(() => {
-      setToast(null);
-    }, 4000);
+    setTimeout(() => setToast(null), 4000);
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl p-6 glass border border-amber-500/30 glow-cyan"
+      className="max-w-md w-full mx-auto"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">Control Deck</h3>
-            <p className="text-xs text-gray-400">Remediation actions for {serviceId}</p>
-          </div>
-        </div>
-        <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium border border-amber-500/30">
-          High-Risk Actions
-        </span>
-      </div>
-
-      {/* Warning */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-medium text-amber-400">Simulated Environment</p>
-          <p className="text-xs text-gray-400 mt-1">
-            These actions are mocked for demonstration. In production, they would execute real infrastructure changes.
-          </p>
-        </div>
-      </div>
-
-      {/* Actions Grid */}
-      <div className="grid gap-3">
-        {actions.map((action) => {
-          const config = getActionConfig(action);
-          const state = actionStates[action] || "idle";
+      {/* Card Container */}
+      <div className="glass-card rounded-2xl p-1 overflow-hidden bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-white/5 shadow-2xl">
+        <div className="bg-[#0c0c0e] rounded-xl p-6">
           
-          return (
-            <motion.button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={state === "loading"}
-              whileHover={{ scale: state === "loading" ? 1 : 1.02 }}
-              whileTap={{ scale: state === "loading" ? 1 : 0.98 }}
-              className={`flex items-center justify-between p-4 rounded-lg border transition-all ${config.bgColor} ${
-                state === "loading" ? "opacity-70 cursor-wait" : "cursor-pointer"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={config.color}>
-                  {state === "loading" ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : state === "success" ? (
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                  ) : (
-                    config.icon
-                  )}
-                </span>
-                <div className="text-left">
-                  <p className={`font-medium ${config.color}`}>{action}</p>
-                  <p className="text-xs text-gray-400">{config.description}</p>
-                </div>
-              </div>
-              <span className={`text-xs px-2 py-1 rounded ${
-                state === "success" 
-                  ? "bg-green-500/20 text-green-400" 
-                  : state === "loading"
-                  ? "bg-gray-500/20 text-gray-400"
-                  : "bg-white/5 text-gray-400"
-              }`}>
-                {state === "success" ? "Done" : state === "loading" ? "Executing..." : "Ready"}
-              </span>
-            </motion.button>
-          );
-        })}
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 flex items-center justify-center border border-amber-500/20 shadow-lg shadow-orange-900/20">
+              <ShieldAlert className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white tracking-tight">Remediation Deck</h3>
+              <p className="text-xs text-zinc-500 font-medium">Target: <span className="text-zinc-300 font-mono">{serviceId}</span></p>
+            </div>
+          </div>
+
+          {/* Actions List */}
+          <div className="space-y-3">
+            {safeActions.length === 0 ? (
+                <p className="text-zinc-600 text-sm">No actions available.</p>
+            ) : (
+                safeActions.map((action) => {
+                const config = getActionConfig(action);
+                const state = actionStates[action] || "idle";
+                const isLoading = state === "loading";
+                const isSuccess = state === "success";
+
+                return (
+                    <button
+                        key={action}
+                        onClick={() => handleAction(action)}
+                        disabled={isLoading || isSuccess}
+                        className="group relative w-full overflow-hidden rounded-xl border border-white/5 bg-zinc-900/50 px-4 py-4 transition-all hover:border-white/10 hover:bg-zinc-800 disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
+                        {/* Progress Bar Background */}
+                        {isLoading && (
+                        <motion.div 
+                            layoutId="progress"
+                            className="absolute inset-0 bg-white/5 w-full h-full origin-left"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 2, ease: "linear" }}
+                        />
+                        )}
+
+                        <div className="relative flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg bg-white/5 transition-colors group-hover:bg-white/10 ${isLoading ? "animate-pulse" : ""}`}>
+                                {isSuccess ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : config.icon}
+                            </div>
+                            <div className="text-left">
+                            <p className={`text-sm font-semibold transition-colors ${isSuccess ? "text-emerald-500" : "text-zinc-200"}`}>
+                                {action}
+                            </p>
+                            <p className="text-[11px] text-zinc-500">{config.desc}</p>
+                            </div>
+                        </div>
+
+                        <div className="pr-2">
+                            {isLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />
+                            ) : isSuccess ? (
+                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Done</span>
+                            ) : (
+                                <ArrowRight className="w-4 h-4 text-zinc-600 opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
+                            )}
+                        </div>
+                        </div>
+                    </button>
+                    );
+                })
+            )}
+          </div>
+
+          {/* Footer Warning */}
+          <div className="mt-6 pt-4 border-t border-white/5 flex items-start gap-3 opacity-60">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              <strong>Simulated Action:</strong> Executing these commands will not affect actual infrastructure. This is a demonstration environment.
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Toast */}
+      {/* Floating Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg flex items-center gap-3 ${
-              toast.type === "success" 
-                ? "bg-green-500/20 border border-green-500/30 text-green-400" 
-                : "bg-red-500/20 border border-red-500/30 text-red-400"
-            }`}
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full bg-zinc-900 border border-white/10 shadow-2xl flex items-center gap-3 z-50"
           >
-            {toast.type === "success" ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <AlertTriangle className="w-5 h-5" />
-            )}
-            <span className="text-sm">{toast.message}</span>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-sm font-medium text-white">{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>

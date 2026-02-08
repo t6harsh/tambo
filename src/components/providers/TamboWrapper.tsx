@@ -2,6 +2,7 @@
 
 import { TamboProvider } from "@tambo-ai/react";
 import { tamboComponents } from "@/lib/tambo/registry";
+import { SRE_SYSTEM_PROMPT } from "@/lib/tambo/prompts";
 import { ReactNode } from "react";
 
 interface TamboWrapperProps {
@@ -13,6 +14,9 @@ export function TamboWrapper({ children }: TamboWrapperProps) {
     <TamboProvider
       apiKey={process.env.NEXT_PUBLIC_TAMBO_API_KEY || ""}
       components={tamboComponents}
+      initialMessages={[
+        { role: "system", content: [{ type: "text", text: SRE_SYSTEM_PROMPT }] },
+      ]}
     >
       {children}
     </TamboProvider>

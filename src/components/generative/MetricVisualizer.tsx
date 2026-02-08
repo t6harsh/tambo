@@ -1,26 +1,27 @@
 "use client";
 
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { XAxis, YAxis, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
 import { motion } from "framer-motion";
-import { Activity, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Circle, Zap } from "lucide-react";
 
 interface MetricVisualizerProps {
   title: string;
   status: "Critical" | "Stable";
-  dataPoints: number[];
+  dataPoints?: number[]; // Made optional for safety
 }
 
-export function MetricVisualizer({ title, status, dataPoints }: MetricVisualizerProps) {
+export function MetricVisualizer({ title, status, dataPoints = [] }: MetricVisualizerProps) {
+  const safeDataPoints = Array.isArray(dataPoints) ? dataPoints : [];
   const isCritical = status === "Critical";
   
-  // Transform data points into chart format
-  const chartData = dataPoints.map((value, index) => ({
-    time: `${index * 5}s`,
+  // Create richer data points for better visuals
+  const chartData = safeDataPoints.map((value, index) => ({
+    time: index,
     value,
   }));
 
-  const lastValue = dataPoints[dataPoints.length - 1] || 0;
-  const firstValue = dataPoints[0] || 0;
+  const lastValue = safeDataPoints[safeDataPoints.length - 1] || 0;
+  const firstValue = safeDataPoints[0] || 0;
   const trend = lastValue > firstValue ? "up" : "down";
   const percentChange = firstValue > 0 
     ? Math.abs(((lastValue - firstValue) / firstValue) * 100).toFixed(1)
@@ -28,116 +29,121 @@ export function MetricVisualizer({ title, status, dataPoints }: MetricVisualizer
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl p-6 glass border ${
-        isCritical ? "border-red-500/50 glow-red" : "border-green-500/50 glow-green"
-      }`}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, type: "spring" }}
+      className="glass-card rounded-2xl p-6 overflow-hidden relative group"
     >
+      {/* Background Glow */}
+      <div 
+        className={`absolute inset-0 opacity-20 pointer-events-none transition-colors duration-1000 ${
+          isCritical 
+            ? "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-500/20 via-transparent to-transparent" 
+            : "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/20 via-transparent to-transparent"
+        }`} 
+      />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            isCritical ? "bg-red-500/20" : "bg-green-500/20"
+      <div className="flex items-center justify-between mb-8 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${
+            isCritical 
+              ? "bg-red-500/10 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]" 
+              : "bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
           }`}>
-            <Activity className={`w-5 h-5 ${isCritical ? "text-red-400" : "text-green-400"}`} />
+            <Activity className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">{title}</h3>
-            <p className="text-xs text-gray-400">Real-time monitoring</p>
+            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">{title}</h3>
+            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider flex items-center gap-1.5">
+              Live Feed
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            </p>
           </div>
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-          isCritical 
-            ? "bg-red-500/20 text-red-400 border border-red-500/30" 
-            : "bg-green-500/20 text-green-400 border border-green-500/30"
-        }`}>
-          {isCritical ? (
-            <>
-              <AlertCircle className="w-4 h-4" />
-              Critical
-            </>
-          ) : (
-            <>
-              <CheckCircle className="w-4 h-4" />
-              Stable
-            </>
-          )}
+
+        <div className="text-right">
+          <div className="flex items-baseline justify-end gap-1">
+            <span className={`text-3xl font-bold tracking-tight ${
+              isCritical ? "text-red-500" : "text-emerald-500"
+            }`}>
+              {lastValue}
+            </span>
+            <span className="text-sm text-zinc-500 font-medium">ms</span>
+          </div>
+          <div className="flex items-center justify-end gap-1 text-xs">
+             {trend === "up" ? (
+                <TrendingUp className={`w-3 h-3 ${isCritical ? "text-red-400" : "text-zinc-400"}`} />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-emerald-400" />
+              )}
+             <span className={isCritical ? "text-red-400" : "text-zinc-400"}>{percentChange}%</span>
+             <span className="text-zinc-600">vs last hour</span>
+          </div>
         </div>
       </div>
 
       {/* Chart */}
-      <div className="h-48 mb-4">
+      <div className="h-[280px] w-full relative z-10">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id={`gradient-${status}`} x1="0" y1="0" x2="0" y2="1">
                 <stop 
                   offset="5%" 
-                  stopColor={isCritical ? "#ef4444" : "#22c55e"} 
+                  stopColor={isCritical ? "#ef4444" : "#10b981"} 
                   stopOpacity={0.3}
                 />
                 <stop 
                   offset="95%" 
-                  stopColor={isCritical ? "#ef4444" : "#22c55e"} 
+                  stopColor={isCritical ? "#ef4444" : "#10b981"} 
                   stopOpacity={0}
                 />
               </linearGradient>
             </defs>
             <XAxis 
-              dataKey="time" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "#6b7280", fontSize: 10 }}
+              dataKey="time"
+              hide
             />
             <YAxis 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "#6b7280", fontSize: 10 }}
-              domain={[0, "dataMax + 20"]}
+              hide
+              domain={['dataMin - 10', 'dataMax + 10']}
             />
+            {/* Custom Grid */}
+            <ReferenceLine y={50} stroke="#3f3f46" strokeDasharray="3 3" opacity={0.2} />
+            <ReferenceLine y={100} stroke="#3f3f46" strokeDasharray="3 3" opacity={0.2} />
+            
             <Area
               type="monotone"
               dataKey="value"
-              stroke={isCritical ? "#ef4444" : "#22c55e"}
-              strokeWidth={2}
+              stroke={isCritical ? "#ef4444" : "#10b981"}
+              strokeWidth={3}
               fill={`url(#gradient-${status})`}
+              animationDuration={2000}
+              animationEasing="ease-in-out"
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-[var(--card-bg)] rounded-lg p-3">
-          <p className="text-xs text-gray-400 mb-1">Current</p>
-          <p className={`text-xl font-bold ${isCritical ? "text-red-400" : "text-green-400"}`}>
-            {lastValue}ms
-          </p>
+      {/* Footer / Status Bar */}
+      <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
+        <div className="flex gap-2">
+            {[1,2,3,4].map(i => (
+                <div key={i} className={`h-1 w-8 rounded-full ${
+                    i <= (isCritical ? 1 : 4) 
+                    ? (isCritical ? "bg-red-500/50" : "bg-emerald-500/50") 
+                    : "bg-zinc-800"
+                }`} />
+            ))}
         </div>
-        <div className="bg-[var(--card-bg)] rounded-lg p-3">
-          <p className="text-xs text-gray-400 mb-1">Trend</p>
-          <div className="flex items-center gap-1">
-            {trend === "up" ? (
-              <TrendingUp className={`w-4 h-4 ${isCritical ? "text-red-400" : "text-amber-400"}`} />
-            ) : (
-              <TrendingDown className="w-4 h-4 text-green-400" />
-            )}
-            <span className={`text-xl font-bold ${
-              trend === "up" && isCritical ? "text-red-400" : "text-green-400"
-            }`}>
-              {percentChange}%
-            </span>
-          </div>
-        </div>
-        <div className="bg-[var(--card-bg)] rounded-lg p-3">
-          <p className="text-xs text-gray-400 mb-1">Status</p>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${
-              isCritical ? "bg-red-500 animate-pulse" : "bg-green-500"
-            }`}></span>
-            <span className="text-sm font-medium">{isCritical ? "Live" : "Recovered"}</span>
-          </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border flex items-center gap-2 ${
+          isCritical 
+            ? "bg-red-500/10 text-red-500 border-red-500/20" 
+            : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+        }`}>
+          {isCritical ? <Zap className="w-3 h-3" /> : <Circle className="w-3 h-3 fill-current" />}
+          {status}
         </div>
       </div>
     </motion.div>
