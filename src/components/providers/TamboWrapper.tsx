@@ -14,9 +14,6 @@ export function TamboWrapper({ children }: TamboWrapperProps) {
     <TamboProvider
       apiKey={process.env.NEXT_PUBLIC_TAMBO_API_KEY || ""}
       components={tamboComponents}
-      initialMessages={[
-        { role: "system", content: [{ type: "text", text: SRE_SYSTEM_PROMPT }] },
-      ]}
     >
       {children}
     </TamboProvider>
